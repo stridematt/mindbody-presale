@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { sql } from "@/lib/db";
-
 export async function GET() {
   const env = {
     MINDBODY_API_KEY: Boolean(process.env.MINDBODY_API_KEY),
@@ -11,7 +9,23 @@ export async function GET() {
     NEXT_PUBLIC_APP_URL: Boolean(process.env.NEXT_PUBLIC_APP_URL),
   };
 
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      {
+        status: "not_ready",
+        service: "mindbody-presale",
+        env,
+        database: "not_configured",
+        message: "DATABASE_URL is not configured yet.",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 },
+    );
+  }
+
   try {
+    const { sql } = await import("@/lib/db");
+
     await sql`select 1 as ok`;
 
     return NextResponse.json({
