@@ -25,7 +25,8 @@ export async function GET() {
   }
 
   try {
-    const { sql } = await import("../../../lib/db");
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon(process.env.DATABASE_URL);
 
     await sql`select 1 as ok`;
 
