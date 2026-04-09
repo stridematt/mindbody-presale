@@ -3,7 +3,8 @@ const MINDBODY_API_VERSION = "6";
 
 const MINDBODY_API_KEY = process.env.MINDBODY_API_KEY;
 const MINDBODY_SITE_ID = process.env.MINDBODY_SITE_ID;
-const MINDBODY_USER_TOKEN = process.env.MINDBODY_USER_TOKEN;
+const MINDBODY_STAFF_USERNAME = process.env.MINDBODY_STAFF_USERNAME;
+const MINDBODY_STAFF_PASSWORD = process.env.MINDBODY_STAFF_PASSWORD;
 
 type MindbodyPrimitive = string | number | boolean;
 type MindbodyQueryValue = MindbodyPrimitive | MindbodyPrimitive[] | undefined;
@@ -128,6 +129,20 @@ export type MindbodyPurchaseContractResponse = {
   >;
 } & Record<string, unknown>;
 
+type MindbodyIssueTokenResponse = {
+  TokenType?: string;
+  AccessToken?: string;
+  Expires?: string;
+  User?: Record<string, unknown>;
+} & Record<string, unknown>;
+
+let cachedStaffToken:
+  | {
+      accessToken: string;
+      expiresAt: number | null;
+    }
+  | null = null;
+
 function getRequiredEnv(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
@@ -164,13 +179,12 @@ function buildMindbodyUrl(path: string, query?: MindbodyQuery): string {
   return url.toString();
 }
 
-function getMindbodyHeaders(): Record<string, string> {
+function getMindbodyBaseHeaders(): Record<string, string> {
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
     "Api-Key": getRequiredEnv("MINDBODY_API_KEY", MINDBODY_API_KEY),
     SiteId: getRequiredEnv("MINDBODY_SITE_ID", MINDBODY_SITE_ID),
-    Authorization: getRequiredEnv("MINDBODY_USER_TOKEN", MINDBODY_USER_TOKEN),
   };
 }
 
@@ -186,15 +200,98 @@ function parseMindbodyResponse(responseText: string): unknown {
   }
 }
 
+function getTokenExpirationTime(expires: string | undefined): number | null {
+  if (!expires) {
+    return null;
+  }
+
+  const timestamp = Date.parse(expires);
+
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+
+  return timestamp;
+}
+
+async function issueStaffUserToken(): Promise<string> {
+  const username = getRequiredEnv(
+    "MINDBODY_STAFF_USERNAME",
+    MINDBODY_STAFF_USERNAME,
+  );
+  const password = getRequiredEnv(
+    "MINDBODY_STAFF_PASSWORD",
+    MINDBODY_STAFF_PASSWORD,
+  );
+
+  const response = await fetch(buildMindbodyUrl("usertoken/issue"), {
+    method: "POST",
+    headers: getMindbodyBaseHeaders(),
+    body: JSON.stringify({
+      Username: username,
+      Password: password,
+    }),
+    cache: "no-store",
+  });
+
+  const responseText = await response.text();
+  const responseData = parseMindbodyResponse(
+    responseText,
+  ) as MindbodyIssueTokenResponse | null;
+
+  if (!response.ok) {
+    throw new Error(
+      `Mindbody request failed (${response.status} ${response.statusText}) for POST usertoken/issue: ${responseText}`,
+    );
+  }
+
+  const accessToken = responseData?.AccessToken;
+
+  if (!accessToken) {
+    throw new Error("Mindbody usertoken/issue response did not include AccessToken.");
+  }
+
+  cachedStaffToken = {
+    accessToken,
+    expiresAt: getTokenExpirationTime(responseData.Expires),
+  };
+
+  return accessToken;
+}
+
+async function getStaffUserToken(): Promise<string> {
+  if (!cachedStaffToken) {
+    return issueStaffUserToken();
+  }
+
+  if (
+    cachedStaffToken.expiresAt !== null &&
+    cachedStaffToken.expiresAt <= Date.now() + 60_000
+  ) {
+    return issueStaffUserToken();
+  }
+
+  return cachedStaffToken.accessToken;
+}
+
+async function getMindbodyHeaders(): Promise<Record<string, string>> {
+  return {
+    ...getMindbodyBaseHeaders(),
+    Authorization: await getStaffUserToken(),
+  };
+}
+
 async function mindbodyFetch<T>({
   method,
   path,
   query,
   body,
 }: MindbodyRequestOptions): Promise<T> {
+  const headers = await getMindbodyHeaders();
+
   const response = await fetch(buildMindbodyUrl(path, query), {
     method,
-    headers: getMindbodyHeaders(),
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
