@@ -4,7 +4,8 @@ export async function GET() {
   const env = {
     MINDBODY_API_KEY: Boolean(process.env.MINDBODY_API_KEY),
     MINDBODY_SITE_ID: Boolean(process.env.MINDBODY_SITE_ID),
-    MINDBODY_USER_TOKEN: Boolean(process.env.MINDBODY_USER_TOKEN),
+    MINDBODY_STAFF_USERNAME: Boolean(process.env.MINDBODY_STAFF_USERNAME),
+    MINDBODY_STAFF_PASSWORD: Boolean(process.env.MINDBODY_STAFF_PASSWORD),
     DATABASE_URL: Boolean(process.env.DATABASE_URL),
     NEXT_PUBLIC_APP_URL: Boolean(process.env.NEXT_PUBLIC_APP_URL),
   };
@@ -24,7 +25,7 @@ export async function GET() {
   }
 
   try {
-    const { sql } = await import("@/lib/db");
+    const { sql } = await import("../../../lib/db");
 
     await sql`select 1 as ok`;
 
