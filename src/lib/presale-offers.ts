@@ -1,4 +1,6 @@
-import { sql } from "./db";
+import { neon } from "@neondatabase/serverless";
+
+const DATABASE_URL = process.env.DATABASE_URL;
 
 export type PresaleOffer = {
   id: string;
@@ -26,6 +28,14 @@ type PresaleOfferRow = {
   updated_at: string;
 };
 
+function getRequiredEnv(name: string, value: string | undefined): string {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+
+  return value;
+}
+
 function mapPresaleOffer(row: PresaleOfferRow): PresaleOffer {
   return {
     id: row.id,
@@ -41,7 +51,13 @@ function mapPresaleOffer(row: PresaleOfferRow): PresaleOffer {
   };
 }
 
+function getSql() {
+  return neon(getRequiredEnv("DATABASE_URL", DATABASE_URL));
+}
+
 export async function listActivePresaleOffers(): Promise<PresaleOffer[]> {
+  const sql = getSql();
+
   const rows = await sql<PresaleOfferRow[]>`
     select
       id,
@@ -65,6 +81,8 @@ export async function listActivePresaleOffers(): Promise<PresaleOffer[]> {
 export async function getPresaleOfferBySlug(
   slug: string,
 ): Promise<PresaleOffer | null> {
+  const sql = getSql();
+
   const rows = await sql<PresaleOfferRow[]>`
     select
       id,
@@ -90,6 +108,8 @@ export async function getPresaleOfferBySlug(
 export async function getPresaleOfferById(
   id: string,
 ): Promise<PresaleOffer | null> {
+  const sql = getSql();
+
   const rows = await sql<PresaleOfferRow[]>`
     select
       id,
