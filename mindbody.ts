@@ -85,6 +85,10 @@ export type GetProductsResponse = {
   Products?: MindbodyProductSummary[];
 } & Record<string, unknown>;
 
+export type ProductCheckoutMetadata = {
+  Id: number;
+};
+
 export type GetContractsResponse = Record<string, unknown>;
 export type GetSalesResponse = Record<string, unknown>;
 export type GetRequiredClientFieldsResponse = Record<string, unknown>;
@@ -270,8 +274,8 @@ export async function purchaseContract(body: PurchaseContractRequest) {
   });
 }
 
-export function buildProductCheckoutMetadata(): never {
-  throw new Error(
-    "Product checkout metadata remains isolated until its exact request shape is explicitly confirmed for this implementation.",
-  );
+export function buildProductCheckoutMetadata(productId: number): ProductCheckoutMetadata {
+  return {
+    Id: productId,
+  };
 }
