@@ -58,7 +58,7 @@ function getSql() {
 export async function listActivePresaleOffers(): Promise<PresaleOffer[]> {
   const sql = getSql();
 
-  const rows = await sql<PresaleOfferRow[]>`
+  const rows = (await sql`
     select
       id,
       slug,
@@ -73,7 +73,7 @@ export async function listActivePresaleOffers(): Promise<PresaleOffer[]> {
     from presale_offers
     where is_active = true
     order by created_at asc
-  `;
+  `) as PresaleOfferRow[];
 
   return rows.map(mapPresaleOffer);
 }
@@ -83,7 +83,7 @@ export async function getPresaleOfferBySlug(
 ): Promise<PresaleOffer | null> {
   const sql = getSql();
 
-  const rows = await sql<PresaleOfferRow[]>`
+  const rows = (await sql`
     select
       id,
       slug,
@@ -98,7 +98,7 @@ export async function getPresaleOfferBySlug(
     from presale_offers
     where slug = ${slug}
     limit 1
-  `;
+  `) as PresaleOfferRow[];
 
   const row = rows[0];
 
@@ -110,7 +110,7 @@ export async function getPresaleOfferById(
 ): Promise<PresaleOffer | null> {
   const sql = getSql();
 
-  const rows = await sql<PresaleOfferRow[]>`
+  const rows = (await sql`
     select
       id,
       slug,
@@ -125,7 +125,7 @@ export async function getPresaleOfferById(
     from presale_offers
     where id = ${id}
     limit 1
-  `;
+  `) as PresaleOfferRow[];
 
   const row = rows[0];
 
